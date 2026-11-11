@@ -32,6 +32,7 @@ import (
 	"go.platform-mesh.io/security-operator/internal/metrics"
 	"go.platform-mesh.io/security-operator/internal/subroutine"
 	"go.platform-mesh.io/security-operator/pkg/config"
+	"go.platform-mesh.io/subroutines"
 	"go.platform-mesh.io/subroutines/lifecycle"
 
 	"k8s.io/client-go/util/workqueue"
@@ -60,9 +61,15 @@ func NewAccountLogicalClusterController(log *logger.Logger, cfg config.Config, f
 		return nil, fmt.Errorf("creating RateLimiter: %w", err)
 	}
 
+	var intent subroutines.Subroutine
+	if cfg.AuthorizationIntentEnabled {
+		intent = &subroutine.AuthorizationIntent{Clients: kcpClientGetter}
+	} else {
+		intent = subroutine.NewAccountTuplesSubroutine(mgr, fgaClient, storeIDGetter, cfg.FGA.CreatorRelation, cfg.FGA.ParentRelation, cfg.FGA.ObjectType, kcpClientGetter)
+	}
 	lc := lifecycle.New(mgr, opts.Name, func() ctrlruntimeclient.Object {
 		return &kcpcorev1alpha1.LogicalCluster{}
-	}, subroutine.NewAccountTuplesSubroutine(mgr, fgaClient, storeIDGetter, cfg.FGA.CreatorRelation, cfg.FGA.ParentRelation, cfg.FGA.ObjectType, kcpClientGetter))
+	}, intent)
 
 	if opts.InitializerName != "" {
 		lc = lc.WithInitializer(opts.InitializerName)

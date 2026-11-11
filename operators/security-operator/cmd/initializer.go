@@ -111,19 +111,23 @@ var initializerCmd = &cobra.Command{
 			initializerCfg.IDP.AdditionalRedirectURLs = []string{}
 		}
 
-		conn, err := grpc.NewClient(initializerCfg.FGA.Target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Error().Err(err).Msg("unable to create grpc client")
-			return err
+		var fgaClient openfgav1.OpenFGAServiceClient
+		var storeIDGetter fga.StoreIDGetter
+		if !initializerCfg.AuthorizationIntentEnabled {
+			conn, err := grpc.NewClient(initializerCfg.FGA.Target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				log.Error().Err(err).Msg("unable to create grpc client")
+				return err
+			}
+			defer func() { _ = conn.Close() }()
+			fgaClient = openfgav1.NewOpenFGAServiceClient(conn)
+			storeIDGetter = fga.NewCachingStoreIDGetter(
+				cmd.Context(),
+				fgaClient,
+				initializerCfg.FGA.StoreIDCacheTTL,
+				log,
+			)
 		}
-		defer func() { _ = conn.Close() }()
-		fgaClient := openfgav1.NewOpenFGAServiceClient(conn)
-		storeIDGetter := fga.NewCachingStoreIDGetter(
-			cmd.Context(),
-			fgaClient,
-			initializerCfg.FGA.StoreIDCacheTTL,
-			log,
-		)
 
 		kcpClientGetter := iclient.NewConfigSchemeKCPClientGetter(restCfg, scheme)
 		orgReconciler, err := controller.NewOrgLogicalClusterController(log, kcpClientGetter, initializerCfg, runtimeClient, mgr, fgaClient, storeIDGetter, controller.ControllerOptions{

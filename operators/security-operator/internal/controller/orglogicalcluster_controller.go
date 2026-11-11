@@ -70,7 +70,9 @@ func NewOrgLogicalClusterController(log *logger.Logger, kcpClientGetter iclient.
 
 	var subs []subroutines.Subroutine
 
-	if cfg.Initializer.WorkspaceInitializerEnabled {
+	if cfg.AuthorizationIntentEnabled {
+		subs = append(subs, &subroutine.AuthorizationIntent{Clients: kcpClientGetter})
+	} else if cfg.Initializer.WorkspaceInitializerEnabled {
 		subs = append(subs, subroutine.NewWorkspaceInitializer(cfg, mgr, kcpClientGetter, cfg.FGA.CreatorRelation, cfg.FGA.ObjectType, kcpClientGetter))
 	}
 	if cfg.Initializer.IDPEnabled {
@@ -90,7 +92,7 @@ func NewOrgLogicalClusterController(log *logger.Logger, kcpClientGetter iclient.
 	if cfg.Initializer.WorkspaceAuthEnabled {
 		subs = append(subs, subroutine.NewWorkspaceAuthConfigurationSubroutine(inClusterClient, mgr, kcpClientGetter, cfg))
 	}
-	if cfg.RekeyOrphanedTuplesEnabled {
+	if cfg.RekeyOrphanedTuplesEnabled && !cfg.AuthorizationIntentEnabled {
 		subs = append(subs, subroutine.NewRekeyTuplesSubroutine(cfg, mgr, fgaClient, storeIDGetter, kcpClientGetter))
 	}
 	lc := lifecycle.New(mgr, opts.Name, func() ctrlruntimeclient.Object {

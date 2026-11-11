@@ -89,19 +89,24 @@ var terminatorCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		conn, err := grpc.NewClient(terminatorCfg.FGA.Target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Error().Err(err).Msg("unable to create grpc client")
-			os.Exit(1)
+		var fgaClient openfgav1.OpenFGAServiceClient
+		var storeIDGetter fga.StoreIDGetter
+		if !terminatorCfg.AuthorizationIntentEnabled {
+			conn, err := grpc.NewClient(terminatorCfg.FGA.Target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				log.Error().Err(err).Msg("unable to create grpc client")
+				os.Exit(1)
+			}
+			defer func() { _ = conn.Close() }()
+			fgaClient = openfgav1.NewOpenFGAServiceClient(conn)
+			storeIDGetter = fga.NewCachingStoreIDGetter(
+				cmd.Context(),
+				fgaClient,
+				terminatorCfg.FGA.StoreIDCacheTTL,
+				log,
+			)
 		}
-		defer func() { _ = conn.Close() }()
-		fgaClient := openfgav1.NewOpenFGAServiceClient(conn)
-		storeIDGetter := fga.NewCachingStoreIDGetter(
-			cmd.Context(),
-			fgaClient,
-			terminatorCfg.FGA.StoreIDCacheTTL,
-			log,
-		)
+
 		kcpClientGetter := iclient.NewConfigSchemeKCPClientGetter(mgr.GetLocalManager().GetConfig(), mgr.GetLocalManager().GetScheme())
 
 		orgReconciler, err := controller.NewOrgLogicalClusterController(log, kcpClientGetter, terminatorCfg, nil, mgr, fgaClient, storeIDGetter, controller.ControllerOptions{

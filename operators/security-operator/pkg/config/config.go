@@ -96,6 +96,8 @@ type APIExportEndpointSlices struct {
 
 // Config struct to hold the app config
 type Config struct {
+	AuthorizationIntentEnabled bool
+
 	FGA                              FGAConfig
 	KCP                              KCPConfig
 	APIExportEndpointSlices          APIExportEndpointSlices
@@ -165,6 +167,8 @@ func NewConfig() Config {
 }
 
 func (c *Config) AddFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&c.AuthorizationIntentEnabled, "authorization-intent-enabled", false, "Use experimental backend-neutral authorization intent")
+
 	fs.StringVar(&c.FGA.Target, "fga-target", c.FGA.Target, "Set the OpenFGA API target")
 	fs.DurationVar(&c.FGA.StoreIDCacheTTL, "fga-store-id-cache-ttl", c.FGA.StoreIDCacheTTL, "TTL for the OpenFGA store ID cache (e.g. 5m, 1h)")
 	fs.StringVar(&c.FGA.ObjectType, "fga-object-type", c.FGA.ObjectType, "Set the OpenFGA object type for account tuples")
