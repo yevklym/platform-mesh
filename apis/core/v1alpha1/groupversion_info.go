@@ -43,6 +43,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Account{},
 		&AccountList{},
+		&AuthorizationGrant{},
+		&AuthorizationGrantList{},
 		&AccountInfo{},
 		&AccountInfoList{},
 		&APIExportPolicy{},

@@ -20,6 +20,11 @@ metadata:
 spec:
   resources:
   - group: core.platform-mesh.io
+    name: authorizationgrants
+    schema: v261110-342a3062.authorizationgrants.core.platform-mesh.io
+    storage:
+      crd: {}
+  - group: core.platform-mesh.io
     name: accountinfos
     schema: v260126-7c674ee.accountinfos.core.platform-mesh.io
     storage:
