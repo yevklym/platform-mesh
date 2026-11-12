@@ -51,6 +51,7 @@ type IDPConfig struct {
 
 type DeploymentSubroutineConfig struct {
 	Enabled                          bool
+	AuthorizationWebhookDisabled     bool
 	AuthorizationWebhookSecretName   string
 	AuthorizationWebhookSecretCAName string
 	EnableIstio                      bool
@@ -81,7 +82,8 @@ type FeatureTogglesSubroutineConfig struct {
 }
 
 type WaitSubroutineConfig struct {
-	Enabled bool
+	Enabled               bool
+	WorkspaceAuthDisabled bool
 }
 
 type RemoteClusterConfig struct {
@@ -151,6 +153,7 @@ func NewOperatorConfig() OperatorConfig {
 		Subroutines: SubroutinesConfig{
 			Deployment: DeploymentSubroutineConfig{
 				Enabled:                          true,
+				AuthorizationWebhookDisabled:     false,
 				AuthorizationWebhookSecretName:   "kcp-webhook-secret",
 				AuthorizationWebhookSecretCAName: "rebac-authz-webhook-cert",
 				EnableIstio:                      true,
@@ -200,6 +203,7 @@ func (c *OperatorConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.IDP.UserClaim, "user-claim", c.IDP.UserClaim, "Set the ID token user claim for workspace authentication")
 
 	fs.BoolVar(&c.Subroutines.Deployment.Enabled, "subroutines-deployment-enabled", c.Subroutines.Deployment.Enabled, "Enable deployment subroutine")
+	fs.BoolVar(&c.Subroutines.Deployment.AuthorizationWebhookDisabled, "authorization-webhook-disabled", false, "Omit authorization webhook registration and certificates for native RBAC")
 	fs.StringVar(&c.Subroutines.Deployment.AuthorizationWebhookSecretName, "authorization-webhook-secret-name", c.Subroutines.Deployment.AuthorizationWebhookSecretName, "Authorization webhook secret name")
 	fs.StringVar(&c.Subroutines.Deployment.AuthorizationWebhookSecretCAName, "authorization-webhook-secret-ca-name", c.Subroutines.Deployment.AuthorizationWebhookSecretCAName, "Authorization webhook CA secret name")
 	fs.BoolVar(&c.Subroutines.Deployment.EnableIstio, "subroutines-deployment-enable-istio", c.Subroutines.Deployment.EnableIstio, "Enable Istio integration in deployment subroutine")
@@ -218,6 +222,7 @@ func (c *OperatorConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.Subroutines.ProviderSecret.Enabled, "subroutines-provider-secret-enabled", c.Subroutines.ProviderSecret.Enabled, "Enable provider secret subroutine")
 	fs.BoolVar(&c.Subroutines.FeatureToggles.Enabled, "subroutines-feature-toggles-enabled", c.Subroutines.FeatureToggles.Enabled, "Enable feature toggles subroutine")
 	fs.BoolVar(&c.Subroutines.Wait.Enabled, "subroutines-wait-enabled", c.Subroutines.Wait.Enabled, "Enable wait subroutine")
+	fs.BoolVar(&c.Subroutines.Wait.WorkspaceAuthDisabled, "wait-workspace-auth-disabled", c.Subroutines.Wait.WorkspaceAuthDisabled, "Skip workspace authentication audience readiness when workspace authentication initialization is disabled")
 	fs.BoolVar(&c.Subroutines.ManagedProvider.WaitPlatformMesh.Enabled, "subroutines-managed-provider-wait-platform-mesh-enabled", c.Subroutines.ManagedProvider.WaitPlatformMesh.Enabled, "Enable ManagedProvider wait-platform-mesh subroutine")
 	fs.BoolVar(&c.Subroutines.ManagedProvider.ProviderResource.Enabled, "subroutines-managed-provider-resource-enabled", c.Subroutines.ManagedProvider.ProviderResource.Enabled, "Enable ManagedProvider provider-resource subroutine")
 	fs.BoolVar(&c.Subroutines.ManagedProvider.WaitProvider.Enabled, "subroutines-managed-provider-wait-enabled", c.Subroutines.ManagedProvider.WaitProvider.Enabled, "Enable ManagedProvider wait-provider subroutine")

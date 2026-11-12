@@ -19,6 +19,7 @@
 load("../helpers.py", "TILT_DIR", "kind_in", "profile_chart", "profile_values_file", "remote_chart", "select_objects", "write_yaml")
 load(
     "./settings.Tiltfile",
+    "AUTHZ_PROFILE",
     "BASE_DOMAIN",
     "KUBECTL",
     "NAMESPACE",
@@ -41,22 +42,23 @@ k8s_resource(
     labels=["infra"],
 )
 
-openfga = remote_chart(
-    "openfga",
-    "oci://ghcr.io/openfga/helm-charts",
-    third_party_version("openfga", "chart"),
-    NAMESPACE,
-    values=[profile_values_file("openfga", TEMPLATE_VARS)],
-)
-k8s_yaml(openfga)
-# openfga now uses the shared CNPG postgres (see the openfga-cnpg migration);
-# it no longer ships its own postgres, so wait on the "postgres" resource.
-k8s_resource(
-    "openfga",
-    objects=select_objects(openfga, lambda o: True),
-    resource_deps=["namespace", "postgres"],
-    labels=["infra"],
-)
+if AUTHZ_PROFILE != "authz-rbac":
+    openfga = remote_chart(
+        "openfga",
+        "oci://ghcr.io/openfga/helm-charts",
+        third_party_version("openfga", "chart"),
+        NAMESPACE,
+        values=[profile_values_file("openfga", TEMPLATE_VARS)],
+    )
+    k8s_yaml(openfga)
+    # openfga now uses the shared CNPG postgres (see the openfga-cnpg migration);
+    # it no longer ships its own postgres, so wait on the "postgres" resource.
+    k8s_resource(
+        "openfga",
+        objects=select_objects(openfga, lambda o: True),
+        resource_deps=["namespace", "postgres"],
+        labels=["infra"],
+    )
 
 # The profile's 8443 literals mean "external port"; here that is the NodePort.
 
@@ -70,6 +72,13 @@ NO_REQUESTS = {"requests": {"cpu": "1m", "memory": "1Mi"}}
 KCP_ROOT_HOSTNAME = "root.kcp." + BASE_DOMAIN
 KCP_TRITON_HOSTNAME = "triton.kcp." + BASE_DOMAIN
 
+ROOT_SHARD_CONFIG = {"shardBaseURL": "https://{}:{}/".format(KCP_ROOT_HOSTNAME, PORT), "resources": NO_REQUESTS}
+SHARD_CONFIG = {"resources": NO_REQUESTS}
+if AUTHZ_PROFILE:
+    cache_args = ["--authorization-webhook-cache-authorized-ttl=0s", "--authorization-webhook-cache-unauthorized-ttl=0s"]
+    ROOT_SHARD_CONFIG["extraArgs"] = cache_args
+    SHARD_CONFIG["extraArgs"] = cache_args
+
 infra = profile_chart(
     "infra",
     NAMESPACE,
@@ -77,8 +86,9 @@ infra = profile_chart(
     overrides={
         "kcp": {
             "external": {"port": PORT},
-            "rootShard": {"shardBaseURL": "https://{}:{}/".format(KCP_ROOT_HOSTNAME, PORT), "resources": NO_REQUESTS},
-            "shards": [{"name": "triton", "hostname": KCP_TRITON_HOSTNAME, "spec": {"resources": NO_REQUESTS}}],
+            "webhook": {"enabled": AUTHZ_PROFILE != "authz-rbac"},
+            "rootShard": ROOT_SHARD_CONFIG,
+            "shards": [{"name": "triton", "hostname": KCP_TRITON_HOSTNAME, "spec": SHARD_CONFIG}],
             # kcp-operator defaults both to 2; one is enough on a single node.
             "proxy": {"replicas": 1},
             "cacheServer": {"replicas": 1, "resources": NO_REQUESTS},

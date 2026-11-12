@@ -172,6 +172,10 @@ spec:
 
 ### Wait Configuration
 
+The operator waits for the workspace authentication audience by default. Set
+`--wait-workspace-auth-disabled=true` for a headless composition that omits
+workspace authentication initialization. Resource readiness checks still apply.
+
 The wait behavior can be customized through the `spec.wait` section:
 
 ```yaml

@@ -1409,6 +1409,9 @@ func (r *DeploymentSubroutine) hasIstioProxyInjected(ctx context.Context, labelS
 }
 
 func (r *DeploymentSubroutine) manageAuthorizationWebhookSecrets(ctx context.Context, inst *pmcorev1alpha1.PlatformMesh) (subroutines.Result, error) {
+	if r.cfgOperator.Subroutines.Deployment.AuthorizationWebhookDisabled {
+		return subroutines.OK(), nil
+	}
 	// The serving certificate is signed by a long-lived CA, so renewing it keeps the CA that kcp trusts.
 	for _, file := range []string{"selfsigned-issuer.yaml", "ca-cert.yaml", "ca-issuer.yaml", "webhook-cert.yaml"} {
 		if err := applyManifestFromFileWithMergedValues(ctx, r.k8sManifests, "rebac-auth-webhook/"+file, r.clientRuntime, map[string]any{}); err != nil {

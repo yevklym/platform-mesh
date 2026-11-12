@@ -20,6 +20,8 @@
 load(
     "../helpers.py",
     "chart",
+    "profile_chart",
+    "IMAGE_PREFIX",
     "component_binary",
     "render",
     "select_objects",
@@ -29,6 +31,7 @@ load(
 )
 load(
     "./settings.Tiltfile",
+    "AUTHZ_PROFILE",
     "BASE_DOMAIN",
     "GO_DEPS",
     "HTTPBIN_NAMESPACE",
@@ -61,6 +64,8 @@ pmo = chart(
                 "log": {"level": "debug"},
                 "extraArgs": [
                     "--subroutines-feature-toggles-enabled=true",
+                    "--authorization-webhook-disabled={}".format("true" if AUTHZ_PROFILE == "authz-rbac" else "false"),
+                    "--wait-workspace-auth-disabled={}".format("true" if AUTHZ_PROFILE else "false"),
                     "--kcp-front-proxy-port={}".format(PORT),
                     "--kcp-url=" + KCP_FRONT_PROXY_URL,
                 ],
@@ -119,42 +124,46 @@ local_resource(
 )
 
 # --- services
-service("account-operator", NAMESPACE, TEMPLATE_VARS, path="operators/account-operator", deps=GO_DEPS)
-service(
-    "extension-manager-operator",
-    NAMESPACE,
-    TEMPLATE_VARS,
-    path="operators/extension-manager-operator",
-    deps=GO_DEPS,
-    workloads=["extension-manager-operator-operator", "extension-manager-operator-server"],
-)
-service(
-    "security-operator",
-    NAMESPACE,
-    TEMPLATE_VARS,
-    path="operators/security-operator",
-    deps=GO_DEPS,
-    workloads=[
+if AUTHZ_PROFILE:
+    include("../../poc/authz/profiles.Tiltfile")
+else:
+    # --- services
+    service("account-operator", NAMESPACE, TEMPLATE_VARS, path="operators/account-operator", deps=GO_DEPS)
+    service(
+        "extension-manager-operator",
+        NAMESPACE,
+        TEMPLATE_VARS,
+        path="operators/extension-manager-operator",
+        deps=GO_DEPS,
+        workloads=["extension-manager-operator-operator", "extension-manager-operator-server"],
+    )
+    service(
         "security-operator",
-        "security-operator-generator",
-        "security-operator-initializer",
-        "security-operator-system",
-        "security-operator-terminator",
-    ],
-)
-service("iam-service", NAMESPACE, TEMPLATE_VARS, path="services/iam-service", deps=GO_DEPS)
-service(
-    "kubernetes-graphql-gateway",
-    NAMESPACE,
-    TEMPLATE_VARS,
-    path="services/kubernetes-graphql-gateway",
-    deps=GO_DEPS,
-    workloads=["kubernetes-graphql-gateway", "kubernetes-graphql-gateway-listener"],
-)
-service("rebac-authz-webhook", NAMESPACE, TEMPLATE_VARS, path="services/rebac-authz-webhook", deps=GO_DEPS)
-service("virtual-workspaces", NAMESPACE, TEMPLATE_VARS, path="services/virtual-workspaces", deps=GO_DEPS)
-service("portal", NAMESPACE, TEMPLATE_VARS, overrides={"frontendPort": str(PORT)})
-service("iam-ui", NAMESPACE, TEMPLATE_VARS)
-service("marketplace-ui", NAMESPACE, TEMPLATE_VARS)
+        NAMESPACE,
+        TEMPLATE_VARS,
+        path="operators/security-operator",
+        deps=GO_DEPS,
+        workloads=[
+            "security-operator",
+            "security-operator-generator",
+            "security-operator-initializer",
+            "security-operator-system",
+            "security-operator-terminator",
+        ],
+    )
+    service("iam-service", NAMESPACE, TEMPLATE_VARS, path="services/iam-service", deps=GO_DEPS)
+    service(
+        "kubernetes-graphql-gateway",
+        NAMESPACE,
+        TEMPLATE_VARS,
+        path="services/kubernetes-graphql-gateway",
+        deps=GO_DEPS,
+        workloads=["kubernetes-graphql-gateway", "kubernetes-graphql-gateway-listener"],
+    )
+    service("rebac-authz-webhook", NAMESPACE, TEMPLATE_VARS, path="services/rebac-authz-webhook", deps=GO_DEPS)
+    service("virtual-workspaces", NAMESPACE, TEMPLATE_VARS, path="services/virtual-workspaces", deps=GO_DEPS)
+    service("portal", NAMESPACE, TEMPLATE_VARS, overrides={"frontendPort": str(PORT)})
+    service("iam-ui", NAMESPACE, TEMPLATE_VARS)
+    service("marketplace-ui", NAMESPACE, TEMPLATE_VARS)
 
-include("./httpbin.Tiltfile")
+    include("./httpbin.Tiltfile")

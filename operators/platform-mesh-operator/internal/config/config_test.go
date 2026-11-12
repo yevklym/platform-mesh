@@ -44,6 +44,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	assert.True(t, cfg.Subroutines.ProviderSecret.Enabled)
 	assert.False(t, cfg.Subroutines.FeatureToggles.Enabled)
 	assert.True(t, cfg.Subroutines.Wait.Enabled)
+	assert.False(t, cfg.Subroutines.Wait.WorkspaceAuthDisabled)
 
 	assert.Equal(t, "providers.platform-mesh.io", cfg.Providers.ProvidersAPIExportEndpointSliceName)
 	assert.Equal(t, "root:platform-mesh-system", cfg.Providers.ProvidersAPIExportEndpointSliceWorkspace)
@@ -79,6 +80,7 @@ func TestOperatorConfigAddFlags(t *testing.T) {
 		"--subroutines-provider-secret-enabled=false",
 		"--subroutines-feature-toggles-enabled=true",
 		"--subroutines-wait-enabled=false",
+		"--wait-workspace-auth-disabled=true",
 	})
 
 	assert.NoError(t, err)
@@ -105,6 +107,7 @@ func TestOperatorConfigAddFlags(t *testing.T) {
 	assert.False(t, cfg.Subroutines.ProviderSecret.Enabled)
 	assert.True(t, cfg.Subroutines.FeatureToggles.Enabled)
 	assert.False(t, cfg.Subroutines.Wait.Enabled)
+	assert.True(t, cfg.Subroutines.Wait.WorkspaceAuthDisabled)
 }
 
 func TestOperatorConfigAddFlagsProviders(t *testing.T) {

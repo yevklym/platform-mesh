@@ -18,7 +18,7 @@
 
 load("ext://namespace", "namespace_create")
 load("../helpers.py", "TILT_DIR", "chart", "kind_in", "remote_chart", "select_objects", "write_values")
-load("./settings.Tiltfile", "BASE_DOMAIN", "CONTEXT", "HTTPBIN_NAMESPACE", "KCP_URL", "NAMESPACE", "PORT", "third_party_version")
+load("./settings.Tiltfile", "AUTHZ_PROFILE", "BASE_DOMAIN", "CONTEXT", "HTTPBIN_NAMESPACE", "KCP_URL", "NAMESPACE", "PORT", "third_party_version")
 
 namespace_create(HTTPBIN_NAMESPACE)
 k8s_resource(new_name="httpbin-namespace", objects=[HTTPBIN_NAMESPACE + ":namespace"], labels=["e2e"])
@@ -49,7 +49,9 @@ k8s_resource(
 k8s_resource(
     "api-syncagent",
     objects=select_objects(api_syncagent, lambda o: o["kind"] != "CustomResourceDefinition"),
-    resource_deps=["httpbin-namespace", "export-httpbin-kubeconfig", "example-httpbin-operator"],
+    # The agent mounts the Kubernetes Secret, not the host-exported file.
+    # Deploy before platformmesh-ready; a missing Secret can be retried by kubelet.
+    resource_deps=["httpbin-namespace", "httpbin-provider-bootstrap", "example-httpbin-operator"],
     labels=["e2e"],
 )
 
@@ -107,7 +109,7 @@ local_resource(
     resource_deps=["platformmesh-ready", "httpbin-provider-bootstrap"],
     deps=[os.path.join(TILT_DIR, "manifests/httpbin-apiexportpolicy.yaml")],
     dir=TILT_DIR,
-    cmd="kubectl --kubeconfig .secret/kcp-admin.kubeconfig --server {}/clusters/root:orgs apply -f manifests/httpbin-apiexportpolicy.yaml".format(KCP_URL),
+    cmd="kubectl --kubeconfig .secret/kcp-admin.kubeconfig --server {}/clusters/root:orgs apply -f {}".format(KCP_URL, "../poc/authz/provider-policy.yaml" if AUTHZ_PROFILE in ["authz-openfga", "authz-rbac"] else "manifests/httpbin-apiexportpolicy.yaml"),
 )
 # Written by platform-mesh-operator (extraProviderConnections); the e2e tests read it.
 EXPORT = os.path.join(TILT_DIR, "hack/export-secret.sh")
@@ -125,7 +127,7 @@ local_resource(
     "httpbin-api-ready",
     labels=["e2e"],
     allow_parallel=True,
-    resource_deps=["api-syncagent", "httpbin-apiexportpolicy"],
+    resource_deps=["api-syncagent", "httpbin-apiexportpolicy", "export-httpbin-kubeconfig"],
     dir=TILT_DIR,
     cmd="""kubectl --kubeconfig .secret/httpbin-provider.kubeconfig \
                    wait apiexport/orchestrate.platform-mesh.io \

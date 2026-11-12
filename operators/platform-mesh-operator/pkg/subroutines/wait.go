@@ -144,10 +144,11 @@ func (r *WaitSubroutine) Process(
 		}
 	}
 
-	// Check if WorkspaceAuthenticationConfiguration audience is still a placeholder
-	// If so, trigger a reconcile to ensure all logic is finished
-	if err := r.checkWorkspaceAuthConfigAudience(ctx, log, instance); err != nil {
-		return subroutines.StopWithRequeue(DefaultRequeueInterval, err.Error()), nil
+	// Headless compositions can omit the initializer that supplies this audience.
+	if !r.cfg.Subroutines.Wait.WorkspaceAuthDisabled {
+		if err := r.checkWorkspaceAuthConfigAudience(ctx, log, instance); err != nil {
+			return subroutines.StopWithRequeue(DefaultRequeueInterval, err.Error()), nil
+		}
 	}
 
 	return subroutines.OK(), nil

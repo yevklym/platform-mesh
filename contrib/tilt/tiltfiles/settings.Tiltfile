@@ -29,7 +29,11 @@ config.define_bool(
     "frontend-cors",
     usage="allow browser calls from a frontend run outside the cluster (see installation/frontend-dev-cors-values.yaml)",
 )
+config.define_string("authz-profile",usage="Optional authz-baseline, authz-openfga or authz-rbac PoC composition")
 cfg = config.parse()
+AUTHZ_PROFILE=cfg.get("authz-profile", "")
+if AUTHZ_PROFILE not in ["", "authz-baseline", "authz-openfga", "authz-rbac"]:
+    fail("invalid authz-profile")
 
 CONTEXT = cfg.get("context", DEFAULT_CONTEXT)
 NAMESPACE = "platform-mesh-system"

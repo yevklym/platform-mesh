@@ -33,6 +33,9 @@ version: "3"
 # under ./, ./operators/ or ./services/.
 
 includes:
+  authz-poc:
+    taskfile: contrib/poc/authz/Taskfile.yaml
+    dir: .
   # Shared go-installable tooling (controller-gen, golangci-lint, mockery,
   # apigen), installed once into the root bin/ and reused by every component.
   tools:

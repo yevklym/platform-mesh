@@ -709,3 +709,12 @@ func (s *DeploymentProcessTestSuite) Test_ManageAuthorizationWebhookSecrets_Issu
 	s.Equal(true, field(caCert, "spec", "isCA"))
 	s.NotNil(field(selfSignedIssuer, "spec", "selfSigned"))
 }
+
+func (s *DeploymentProcessTestSuite) TestNativeRBACOmitWebhookSecrets() {
+	_, sub, ctx := s.newWebhookSecretFixture("platform-mesh-system", []byte("leaf"), []byte("ca"), []byte("ca"))
+	sub.cfgOperator.Subroutines.Deployment.AuthorizationWebhookDisabled = true
+	// No embedded manifests are available: the native path must not read them.
+	sub.k8sManifests = nil
+	_, err := sub.manageAuthorizationWebhookSecrets(ctx, &pmcorev1alpha1.PlatformMesh{})
+	s.Require().NoError(err)
+}

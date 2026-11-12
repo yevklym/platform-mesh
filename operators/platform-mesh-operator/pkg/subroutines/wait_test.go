@@ -317,6 +317,61 @@ func (s *WaitTestSuite) TestGetName() {
 	s.Assert().Equal(WaitSubroutineName, name)
 }
 
+func (s *WaitTestSuite) TestProcess_WorkspaceAuthAudienceRequiredByDefault() {
+	ctx := context.WithValue(context.Background(), keys.LoggerCtxKey, s.log)
+	instance := &pmcorev1alpha1.PlatformMesh{
+		Spec: pmcorev1alpha1.PlatformMeshSpec{Wait: &pmcorev1alpha1.WaitConfig{}},
+	}
+	s.mockWorkspaceAuthConfigCheck("<placeholder>")
+
+	result, err := s.testObj.Process(ctx, instance)
+
+	s.Require().NoError(err)
+	s.Assert().True(result.IsStopWithRequeue())
+	s.Assert().Contains(result.Message(), "<placeholder>")
+}
+
+func (s *WaitTestSuite) TestProcess_WorkspaceAuthDisabled() {
+	ctx := context.WithValue(context.Background(), keys.LoggerCtxKey, s.log)
+	s.cfg.Subroutines.Wait.WorkspaceAuthDisabled = true
+	instance := &pmcorev1alpha1.PlatformMesh{
+		Spec: pmcorev1alpha1.PlatformMeshSpec{Wait: &pmcorev1alpha1.WaitConfig{}},
+	}
+
+	result, err := s.testObj.Process(ctx, instance)
+
+	s.Require().NoError(err)
+	s.Assert().Equal(subroutines.OK(), result)
+	// No KCP secret or authentication configuration is needed in this composition.
+	s.clientMock.AssertNotCalled(s.T(), "Get", mock.Anything, mock.Anything, mock.Anything)
+	s.kcpHelperMock.AssertNotCalled(s.T(), "NewKcpClient", mock.Anything, mock.Anything)
+}
+
+func (s *WaitTestSuite) TestProcess_WorkspaceAuthDisabledStillWaitsForResources() {
+	ctx := context.WithValue(context.Background(), keys.LoggerCtxKey, s.log)
+	s.cfg.Subroutines.Wait.WorkspaceAuthDisabled = true
+	instance := &pmcorev1alpha1.PlatformMesh{}
+	s.clientMock.EXPECT().
+		List(mock.Anything, mock.AnythingOfType("*unstructured.UnstructuredList"), mock.Anything).
+		RunAndReturn(func(_ context.Context, list ctrlruntimeclient.ObjectList, _ ...ctrlruntimeclient.ListOption) error {
+			list.(*unstructured.UnstructuredList).Items = []unstructured.Unstructured{{
+				Object: map[string]any{
+					"apiVersion": "helm.toolkit.fluxcd.io/v2",
+					"kind":       "HelmRelease",
+					"metadata":   map[string]any{"name": "pending", "namespace": "default"},
+					"status":     map[string]any{"conditions": []any{map[string]any{"type": "Ready", "status": "False"}}},
+				},
+			}}
+			return nil
+		}).Once()
+
+	result, err := s.testObj.Process(ctx, instance)
+
+	s.Require().NoError(err)
+	s.Assert().True(result.IsStopWithRequeue())
+	s.Assert().Contains(result.Message(), "pending")
+}
+
 func (s *WaitTestSuite) TestProcess_CustomResourceType_Kustomization() {
 	ctx := context.WithValue(context.Background(), keys.LoggerCtxKey, s.log)
 
