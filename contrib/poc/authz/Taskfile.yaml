@@ -15,6 +15,8 @@
 version: '3'
 vars:
   PROFILE: '{{.PROFILE | default "authz-rbac"}}'
+  CASES: '{{if eq .PROFILE "authz-openfga"}}openfga{{else if eq .PROFILE "authz-baseline"}}baseline{{else}}rbac{{end}}'
+  EVIDENCE: '{{.EVIDENCE | default "contrib/poc/authz/results/latest"}}'
 tasks:
   up:
     desc: Start an explicit headless authorization PoC profile on the dedicated Tilt kind context.
@@ -22,3 +24,40 @@ tasks:
       KIND_CLUSTER_NAME: platform-mesh-{{.PROFILE}}
     cmds:
       - task tilt:up -- --authz-profile={{.PROFILE}} --context=kind-platform-mesh-{{.PROFILE}}
+  fixtures:
+    desc: Provision the administrator-owned PoC organizations, accounts and namespaces.
+    env:
+      KUBECONFIG: '{{.ROOT_DIR}}/contrib/tilt/.secret/kcp-admin.kubeconfig'
+    cmds:
+      - bash contrib/poc/authz/fixtures.sh
+  validate:
+    env:
+      KUBECONFIG: '{{.ROOT_DIR}}/contrib/tilt/.secret/kcp-admin.kubeconfig'
+    desc: Run API and SelfSubjectAccessReview scenarios and produce evidence.
+    vars:
+      REVISION:
+        sh: 'git describe --always --dirty'
+    cmds:
+      - bash contrib/poc/authz/evidence.sh {{.PROFILE}} {{.EVIDENCE}}
+      - bash contrib/poc/authz/reset.sh
+      - go run ./operators/security-operator authz-validate --profile={{.PROFILE}} --revision={{.REVISION}} --kcp-kubeconfig=contrib/tilt/.secret/kcp-admin.kubeconfig --cases=contrib/poc/authz/cases-{{.CASES}}.json --output={{.EVIDENCE}}
+  demo:
+    cmds:
+      - task: fixtures
+      - task: validate
+  report:
+    desc: Display the recorded result matrix; never infer success without a run.
+    cmds:
+      - cat {{.EVIDENCE}}/results.md
+  test:
+    desc: Run focused PoC contract/projection checks.
+    cmds:
+      - go test ./operators/security-operator/pkg/authz ./apis/core/v1alpha1
+      - python3 -B -m unittest discover -s contrib/poc/authz -p 'test_*.py'
+
+  experiment:
+    desc: Run an explicit failure/recovery experiment on the dedicated PoC cluster.
+    env:
+      KUBECONFIG: '{{.ROOT_DIR}}/contrib/tilt/.secret/kcp-admin.kubeconfig'
+    cmds:
+      - bash contrib/poc/authz/experiments.sh {{.PROFILE}} {{.EXPERIMENT}}

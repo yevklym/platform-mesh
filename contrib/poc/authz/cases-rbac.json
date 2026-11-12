@@ -1,0 +1,120 @@
+[
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "user": "reader",
+    "id": "local-reader-grant",
+    "grantName": "reader-one",
+    "state": "Active",
+    "role": "account-reader",
+    "propagation": "Local",
+    "expectedAllowed": true
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "id": "reader-httpbin-write-denied",
+    "user": "reader",
+    "group": "orchestrate.platform-mesh.io",
+    "resource": "httpbins",
+    "namespace": "poc",
+    "name": "probe-reader",
+    "verb": "create",
+    "expectedAllowed": false
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "id": "editor-grant",
+    "user": "editor",
+    "grantName": "editor-one",
+    "state": "Active",
+    "role": "account-editor",
+    "propagation": "Local",
+    "expectedAllowed": true
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "id": "editor-httpbin-create",
+    "user": "editor",
+    "group": "orchestrate.platform-mesh.io",
+    "resource": "httpbins",
+    "namespace": "poc",
+    "name": "probe-editor",
+    "verb": "create",
+    "expectedAllowed": true
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "id": "grant-management-denied",
+    "user": "editor",
+    "group": "core.platform-mesh.io",
+    "resource": "authorizationgrants",
+    "name": "forbidden",
+    "expectedAllowed": false
+  },
+  {
+    "id": "sibling-isolation",
+    "parent": "root:orgs",
+    "account": "org-b",
+    "user": "reader",
+    "expectedAllowed": false
+  },
+  {
+    "id": "descendant-isolation",
+    "parent": "root:orgs:org-a",
+    "account": "account-a",
+    "user": "reader",
+    "expectedAllowed": false
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "user": "reader",
+    "id": "overlapping-reader-grant",
+    "grantName": "reader-two",
+    "state": "Active",
+    "role": "account-reader",
+    "propagation": "Local",
+    "expectedAllowed": true
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "user": "reader",
+    "id": "revoke-first-grant",
+    "grantName": "reader-one",
+    "state": "Revoked",
+    "expectedAllowed": true
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "user": "reader",
+    "id": "revoke-last-grant",
+    "grantName": "reader-two",
+    "state": "Revoked",
+    "expectedAllowed": false
+  },
+  {
+    "parent": "root:orgs",
+    "account": "org-a",
+    "user": "reader",
+    "id": "inheritance-capability",
+    "grantName": "inherited",
+    "state": "Active",
+    "role": "account-reader",
+    "propagation": "Descendants",
+    "expectedAllowed": false,
+    "expectedReason": "UnsupportedCapability"
+  },
+  {
+    "id": "inheritance-descendant",
+    "parent": "root:orgs:org-a",
+    "account": "account-a",
+    "user": "reader",
+    "expectedAllowed": false
+  }
+]

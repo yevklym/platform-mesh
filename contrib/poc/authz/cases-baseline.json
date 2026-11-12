@@ -1,0 +1,16 @@
+[
+  {
+    "id": "creator-access",
+    "parent": "root:orgs",
+    "account": "org-a",
+    "user": "creator",
+    "expectedAllowed": true
+  },
+  {
+    "id": "unassigned-user",
+    "parent": "root:orgs",
+    "account": "org-a",
+    "user": "reader",
+    "expectedAllowed": false
+  }
+]
