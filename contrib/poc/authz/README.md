@@ -128,7 +128,7 @@ those APIBindings to become Bound, then resets only runner-owned grants and
 executes the scenario file. Fixture
 initialization/deletion budgets are 180 seconds after infrastructure readiness;
 healthy permission convergence has a 30-second budget. Both shard profiles disable
-webhook decision caching for this experiment. These are PoC budgets, not SLOs.
+webhook decision caching for this experiment.
 
 The default `cases-rbac.json` and `cases-openfga.json` exercise local access,
 HTTPBin write boundaries, denied grant management, organization/descendant
@@ -145,7 +145,9 @@ administrator. Transport errors and review evaluation errors are failures, never
 successful denial results.
 
 ```sh
-task authz-poc:validate PROFILE=authz-openfga EVIDENCE=contrib/poc/authz/results/fga-run-1
+docker start platform-mesh-authz-openfga-control-plane
+task authz-poc:up PROFILE=authz-openfga
+task authz-poc:demo PROFILE=authz-openfga EVIDENCE=contrib/poc/authz/results/fga-run-1
 task authz-poc:report EVIDENCE=contrib/poc/authz/results/fga-run-1
 ```
 
@@ -198,11 +200,6 @@ scenario format supports additional get and dry-run HTTPBin-create probes.
 
 ## Architecture-review package
 
-Present the evidence using [PRESENTATION.md](PRESENTATION.md). Reviewers should be
-able to trace every conclusion to a result row and its input manifest. Unrun
-experiments remain **not tested**; unsupported capabilities are distinct from
-implementation defects.
-
 Known boundaries of this implementation:
 
 - Runtime/API separation is exercised; the security-operator Go module and
@@ -237,5 +234,3 @@ Grant CRDs/deepcopy are generated from the shared API types. Use the repository'
 keep the deployed core APIResourceSchema and the experimental generated copy in
 sync. The first implementation used the cached controller-gen and kcp apigen
 sources because GitHub/tool downloads were unavailable.
-
-See [VALIDATION.md](VALIDATION.md) for the checks actually completed in this session.
