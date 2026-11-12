@@ -79,11 +79,36 @@ func (b *FGA) Handler() http.Handler {
 					}
 				}
 			}
+		} else if len(clusters) == 1 && isDiscoveryRequest(sar.Spec.NonResourceAttributes) {
+			// Clients discover API groups and resources before making resource
+			// requests. Discovery follows reader access in this workspace.
+			allowed, err := b.Check(r.Context(), sar.Spec.User, clusters[0], "reader")
+			sar.Status.Allowed = allowed
+			if err != nil {
+				sar.Status.Allowed = false
+				sar.Status.Denied = true
+				sar.Status.Reason = "authorization backend unavailable"
+			}
 		}
 		sar.Spec = authorizationv1.SubjectAccessReviewSpec{}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(sar)
 	})
+}
+
+func isDiscoveryRequest(a *authorizationv1.NonResourceAttributes) bool {
+	if a == nil || a.Verb != "get" {
+		return false
+	}
+	if a.Path == "/version" || a.Path == "/version/" {
+		return true
+	}
+	for _, prefix := range []string{"/api", "/apis", "/openapi"} {
+		if a.Path == prefix || strings.HasPrefix(a.Path, prefix+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // RequiredRole matches exact resources and rejects all subresources by default.
